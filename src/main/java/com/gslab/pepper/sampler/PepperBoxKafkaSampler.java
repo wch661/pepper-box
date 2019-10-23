@@ -16,7 +16,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.SslConfigs;
-import org.apache.kafka.common.protocol.SecurityProtocol;
+import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.log.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
@@ -168,9 +168,9 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
         try {
             if (key_message_flag) {
                 Object message_key = JMeterContextService.getContext().getVariables().getObject(msg_key_placeHolder);
-                producerRecord = new ProducerRecord<String, Object>(topic, message_key.toString(), message_val);
+                producerRecord = new ProducerRecord<>(topic, message_key.toString(), message_val);
             } else {
-                producerRecord = new ProducerRecord<String, Object>(topic, message_val);
+                producerRecord = new ProducerRecord<>(topic, message_val);
             }
             producer.send(producerRecord);
             sampleResult.setResponseData(message_val.toString(), StandardCharsets.UTF_8.name());
@@ -186,6 +186,7 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
         }
 
         return sampleResult;
+
     }
 
     @Override
@@ -201,9 +202,10 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
 
         if (zookeeperServers != null && !zookeeperServers.equalsIgnoreCase(ProducerKeys.ZOOKEEPER_SERVERS_DEFAULT)) {
 
+            ZooKeeper zk = null;
             try {
 
-                ZooKeeper zk = new ZooKeeper(zookeeperServers, 10000, null);
+                zk = new ZooKeeper(zookeeperServers, 10000, event -> log.debug(" receive event : "+event.getType().name()));
                 List<String> ids = zk.getChildren(PropsKeys.BROKER_IDS_ZK_PATH, false);
 
                 for (String id : ids) {
@@ -228,6 +230,14 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
 
                 log.error("Failed to get broker information", e);
 
+            } finally {
+                try {
+                    if (zk != null) {
+                        zk.close();
+                    }
+                } catch (InterruptedException e) {
+                    log.error("Failed to stop zk.", e);
+                }
             }
 
         }

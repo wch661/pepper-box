@@ -14,6 +14,7 @@ import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.JMeterVariables;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.utils.Time;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,22 +40,19 @@ public class PepperBoxLoadGenTest {
 
     private KafkaServer kafkaServer = null;
 
-    private ZkClient zkClient = null;
-
     @Before
     public void setup() throws IOException {
 
         zkServer = new EmbeddedZookeeper();
 
         String zkConnect = ZKHOST + ":" + zkServer.port();
-        zkClient = new ZkClient(zkConnect, 30000, 30000, ZKStringSerializer$.MODULE$);
-        ZkUtils zkUtils = ZkUtils.apply(zkClient, false);
 
         Properties brokerProps = new Properties();
         brokerProps.setProperty("zookeeper.connect", zkConnect);
         brokerProps.setProperty("broker.id", "0");
         brokerProps.setProperty("log.dirs", Files.createTempDirectory("kafka-").toAbsolutePath().toString());
         brokerProps.setProperty("listeners", "PLAINTEXT://" + BROKERHOST +":" + BROKERPORT);
+        brokerProps.setProperty("offsets.topic.replication.factor", "1");
         KafkaConfig config = new KafkaConfig(brokerProps);
         Time mock = new MockTime();
         kafkaServer = TestUtils.createServer(config, mock);
@@ -97,8 +95,7 @@ public class PepperBoxLoadGenTest {
     @After
     public void teardown(){
         kafkaServer.shutdown();
-        zkClient.close();
-        zkServer.shutdown();
+//        zkServer.shutdown();
 
     }
 
